@@ -1,0 +1,44 @@
+{
+  "model_name": "CatBoost",
+  "target_column": "ExternalId",
+  "id_column": null,
+  "numeric_features": [
+    "FLAT_AREA",
+    "FLAT_ROOMS",
+    "FLAT_FLOOR",
+    "FLAT_PRICE",
+    "FLAT_PRICE_SQM"
+  ],
+  "categorical_features": [
+    "Source",
+    "CITY_ID"
+  ],
+  "feature_order": [
+    "FLAT_AREA",
+    "FLAT_ROOMS",
+    "FLAT_FLOOR",
+    "FLAT_PRICE",
+    "FLAT_PRICE_SQM",
+    "Source",
+    "CITY_ID"
+  ],
+  "text_fields": [],
+  "knn_enabled": false,
+  "model_metrics": {
+    "r2": 0.002894219285913935,
+    "mape": 0.3803406278681658,
+    "mae": 7335689.099784461,
+    "rmse": 30395645.063164756
+  },
+  "data_info": {
+    "total_records": 9524,
+    "total_features": 7,
+    "price_range": {
+      "min": 1348340185.0,
+      "max": 2076090922.0,
+      "mean": 2069784441.0186896
+    }
+  },
+  "version": "1.0.0",
+  "created_at": "2026-04-21T06:12:09.909385"
+}
