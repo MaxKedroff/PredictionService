@@ -1,44 +1,52 @@
 {
-  "model_name": "CatBoost",
-  "target_column": "ExternalId",
-  "id_column": null,
+  "model_name": "RandomForest",
+  "target_column": "FLAT_PRICE",
+  "id_column": "FLAT_ID",
   "numeric_features": [
     "FLAT_AREA",
     "FLAT_ROOMS",
     "FLAT_FLOOR",
-    "FLAT_PRICE",
-    "FLAT_PRICE_SQM"
+    "FLAT_PRICE_SQM",
+    "FLAT_AREA_LIVING",
+    "FLAT_AREA_KITCHEN"
   ],
   "categorical_features": [
-    "Source",
-    "CITY_ID"
+    "CITY_ID",
+    "FLAT_BALCONY",
+    "FLAT_LOGGIA",
+    "FLAT_FURNITURE",
+    "FLAT_STATUS"
   ],
   "feature_order": [
     "FLAT_AREA",
     "FLAT_ROOMS",
     "FLAT_FLOOR",
-    "FLAT_PRICE",
     "FLAT_PRICE_SQM",
-    "Source",
-    "CITY_ID"
+    "FLAT_AREA_LIVING",
+    "FLAT_AREA_KITCHEN",
+    "CITY_ID",
+    "FLAT_BALCONY",
+    "FLAT_LOGGIA",
+    "FLAT_FURNITURE",
+    "FLAT_STATUS"
   ],
   "text_fields": [],
   "knn_enabled": false,
   "model_metrics": {
-    "r2": 0.002894219285913935,
-    "mape": 0.3803406278681658,
-    "mae": 7335689.099784461,
-    "rmse": 30395645.063164756
+    "r2": 0.9903781991443817,
+    "mape": 3.521352410494453,
+    "mae": 1194761.2392521063,
+    "rmse": 3696404.621145542
   },
   "data_info": {
-    "total_records": 9524,
-    "total_features": 7,
+    "total_records": 3831,
+    "total_features": 11,
     "price_range": {
-      "min": 1348340185.0,
-      "max": 2076090922.0,
-      "mean": 2069784441.0186896
+      "min": 4200000.0,
+      "max": 1050000000.0,
+      "mean": 41187919.17280084
     }
   },
   "version": "1.0.0",
-  "created_at": "2026-04-21T06:12:09.909385"
+  "created_at": "2026-04-22T17:43:17.299361"
 }

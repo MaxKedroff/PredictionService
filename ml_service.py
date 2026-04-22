@@ -117,6 +117,20 @@ def preprocess_input(data: Dict[str, Any]) -> pd.DataFrame:
     """Предобработка входных данных"""
     global scaler, label_encoders, feature_order, numeric_features, categorical_features
 
+    # Удаляем TYPES_RENOVATION если есть
+    if 'TYPES_RENOVATION' in data:
+        logger.info(f"Игнорируем поле TYPES_RENOVATION со значением: {data.pop('TYPES_RENOVATION')}")
+
+    # 🔥 Преобразуем все булевы значения в числа
+    data = data.copy()  # Создаем копию, чтобы не изменять оригинал
+    for key, value in data.items():
+        if isinstance(value, bool):
+            data[key] = int(value)  # True -> 1, False -> 0
+            logger.info(f"Преобразовано булево поле {key}: {value} -> {data[key]}")
+        elif isinstance(value, str) and value.lower() in ['true', 'false']:
+            data[key] = 1 if value.lower() == 'true' else 0
+            logger.info(f"Преобразовано строковое булево поле {key}: {value} -> {data[key]}")
+
     # Создаем DataFrame из входных данных
     input_df = pd.DataFrame([data])
 
@@ -125,8 +139,11 @@ def preprocess_input(data: Dict[str, Any]) -> pd.DataFrame:
         if col in input_df.columns:
             # Конвертируем в число
             input_df[col] = pd.to_numeric(input_df[col], errors='coerce')
-            # Заполняем пропуски медианой (если нет - 0)
+            # Заполняем пропуски 0
             input_df[col] = input_df[col].fillna(0)
+        else:
+            # Если колонки нет в данных, добавляем с 0
+            input_df[col] = 0
 
     # Обработка категориальных признаков
     for col in categorical_features:
@@ -138,16 +155,30 @@ def preprocess_input(data: Dict[str, Any]) -> pd.DataFrame:
             if col in label_encoders and 'transform' in label_encoders[col]:
                 transform_map = label_encoders[col]['transform']
                 input_df[col] = input_df[col].map(lambda x: transform_map.get(x, 0))
+            else:
+                logger.warning(f"Признак {col} не найден в label_encoders, используем 0")
+                input_df[col] = 0
+        else:
+            # Если категориальной колонки нет, добавляем с 0
+            input_df[col] = 0
 
     # Масштабируем числовые признаки
     if scaler and numeric_features:
+        # Убеждаемся, что все числовые колонки присутствуют
+        for col in numeric_features:
+            if col not in input_df.columns:
+                input_df[col] = 0
         input_df[numeric_features] = scaler.transform(input_df[numeric_features])
 
     # Сортируем колонки в правильном порядке
+    # Добавляем отсутствующие колонки
+    for col in feature_order:
+        if col not in input_df.columns:
+            input_df[col] = 0
+
     input_df = input_df[feature_order]
 
     return input_df
-
 
 @app.route('/health', methods=['GET'])
 def health_check():
