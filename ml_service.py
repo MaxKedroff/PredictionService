@@ -9,6 +9,10 @@ from flask_cors import CORS
 from datetime import datetime
 import logging
 from typing import Dict, Any, List
+import psycopg2
+from  psycopg2.extras import RealDictCursor
+from  psycopg2.pool import SimpleConnectionPool
+import  json
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +30,17 @@ feature_importance = {}
 model_config = {}
 numeric_features = []
 categorical_features = []
+
+db_pool = None
+db_config = {
+    'host': os.environ.get('DB_HOST', 'localhost'),
+    'port': os.environ.get('DB_PORT', '5432'),
+    'database': 'RealEstateDb',
+    'user': 'postgres',
+    'password': 'vfrcbv2005',
+    'min_conn': 1,
+    'max_conn': 10
+}
 
 
 def load_models():
@@ -112,6 +127,175 @@ def load_models():
         logger.error(f"❌ Ошибка загрузки моделей: {e}")
         return False
 
+def init_db_pool():
+    global db_pool
+    try:
+        db_pool = SimpleConnectionPool(
+                     minconn = db_config['min_conn'],
+                     maxconn = db_config['max_conn'],
+                     host = db_config['host'],
+                     port = db_config['port'],
+                     database = db_config['database'],
+                     user = db_config['user'],
+                     password = db_config['password'],
+                     cursor_factory = RealDictCursor)
+
+        logger.info("✅ Пул соединений с PostgreSQL создан")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Ошибка подключения к БД: {e}")
+        return False
+
+def get_db_connection():
+    if db_pool:
+        return  db_pool.getconn()
+    return None
+
+def return_db_connection(conn):
+    if db_pool and conn:
+        db_pool.putconn(conn)
+
+
+def calculate_similarity_with_prediction(target_flat: Dict, db_flat: Dict, model, preprocess_func,
+                                         feature_importance: Dict = None) -> float:
+    """
+    Расчет сходства с использованием предсказанной цены модели (как в обучении)
+    """
+    try:
+        # Предсказываем цену для квартиры из БД
+        db_prediction = predict_for_flat(db_flat, model, preprocess_func)
+
+        # 1. Сходство по предсказанной цене (вес 0.4)
+        target_price = target_flat.get('target_price', 0)
+        if target_price > 0 and db_prediction > 0:
+            price_sim = 1 - min(1, abs(db_prediction - target_price) / max(target_price, 1))
+        else:
+            price_sim = 0.5
+
+        # 2. Сходство по числовым признакам (вес 0.4)
+        numeric_fields = ['flat_area', 'flat_rooms', 'flat_floor', 'flat_area_living', 'flat_area_kitchen']
+        num_score = 0
+        num_count = 0
+
+        for field in numeric_fields:
+            target_val = target_flat.get(field, 0)
+            db_val = db_flat.get(field, 0)
+
+            try:
+                target_val = float(target_val) if target_val else 0
+                db_val = float(db_val) if db_val else 0
+
+                if target_val > 0 and db_val > 0:
+                    diff = abs(db_val - target_val) / max(target_val, 1)
+                    field_sim = 1 - min(1, diff)
+                    num_score += field_sim
+                    num_count += 1
+                elif target_val == 0 and db_val == 0:
+                    num_score += 1
+                    num_count += 1
+            except (ValueError, TypeError):
+                pass
+
+        if num_count > 0:
+            num_score = num_score / num_count
+        else:
+            num_score = 0.5
+
+        # 3. Сходство по категориальным признакам (вес 0.2)
+        categorical_fields = ['flat_balcony', 'flat_loggia', 'flat_furniture', 'flat_status', 'city_id']
+        cat_score = 0
+        cat_count = 0
+
+        for field in categorical_fields:
+            target_val = str(target_flat.get(field, 'unknown')).strip()
+            db_val = str(db_flat.get(field, 'unknown')).strip()
+
+            if target_val == db_val:
+                cat_score += 1
+            cat_count += 1
+
+        if cat_count > 0:
+            cat_score = cat_score / cat_count
+        else:
+            cat_score = 0.5
+
+        # Итоговый score
+        total_score = 0.4 * price_sim + 0.4 * num_score + 0.2 * cat_score
+
+        return total_score
+
+    except Exception as e:
+        logger.error(f"Ошибка расчета сходства: {e}")
+        return 0.0
+
+def calculate_similarity_for_service(target_flat: Dict, db_flat: Dict, model_prediction: float,
+                                     feature_importance: Dict = None) -> float:
+    """
+    Расчет сходства между целевой квартирой и квартирой из БД
+    Полностью повторяет логику из обучения моделей
+    """
+
+    # 1. Сходство по предсказанной цене (вес 0.4)
+    # Для квартир из БД нужно было бы предсказать цену, но у нас ее нет
+    # Поэтому используем реальную цену из БД как прокси для предсказанной
+    db_price = float(db_flat.get('flat_price', 0))
+    if db_price > 0 and model_prediction > 0:
+        price_sim = 1 - min(1, abs(db_price - model_prediction) / max(model_prediction, 1))
+    else:
+        price_sim = 0.5
+
+    # 2. Сходство по числовым признакам (вес 0.4)
+    numeric_fields = ['flat_area', 'flat_rooms', 'flat_floor', 'flat_area_living', 'flat_area_kitchen']
+    num_score = 0
+    num_count = 0
+
+    for field in numeric_fields:
+        target_val = target_flat.get(field, 0)
+        db_val = db_flat.get(field, 0)
+
+        try:
+            target_val = float(target_val) if target_val else 0
+            db_val = float(db_val) if db_val else 0
+
+            if target_val > 0 and db_val > 0:
+                diff = abs(db_val - target_val) / max(target_val, 1)
+                field_sim = 1 - min(1, diff)
+                num_score += field_sim
+                num_count += 1
+            elif target_val == 0 and db_val == 0:
+                num_score += 1
+                num_count += 1
+        except (ValueError, TypeError):
+            pass
+
+    if num_count > 0:
+        num_score = num_score / num_count
+    else:
+        num_score = 0.5
+
+    # 3. Сходство по категориальным признакам (вес 0.2)
+    categorical_fields = ['flat_balcony', 'flat_loggia', 'flat_furniture', 'flat_status', 'city_id']
+    cat_score = 0
+    cat_count = 0
+
+    for field in categorical_fields:
+        target_val = str(target_flat.get(field, 'unknown')).strip()
+        db_val = str(db_flat.get(field, 'unknown')).strip()
+
+        if target_val == db_val:
+            cat_score += 1
+        cat_count += 1
+
+    if cat_count > 0:
+        cat_score = cat_score / cat_count
+    else:
+        cat_score = 0.5
+
+    # Итоговый score (те же веса, что в обучении)
+    # price_sim - 0.4, num_score - 0.4, cat_score - 0.2
+    total_score = 0.4 * price_sim + 0.4 * num_score + 0.2 * cat_score
+
+    return total_score
 
 def preprocess_input(data: Dict[str, Any]) -> pd.DataFrame:
     """Предобработка входных данных"""
@@ -323,7 +507,7 @@ if __name__ == '__main__':
     # Загружаем модели
     if load_models():
         # Запускаем сервер
-        port = int(os.environ.get('PORT', 5000))
+        port = int(os.environ.get('PORT', 5001))
         app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
     else:
         logger.error("Не удалось загрузить модели. Сервер не запущен.")
