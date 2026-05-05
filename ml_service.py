@@ -507,7 +507,7 @@ if __name__ == '__main__':
     # Загружаем модели
     if load_models():
         # Запускаем сервер
-        port = int(os.environ.get('PORT', 5001))
+        port = int(os.environ.get('PORT', 5002))
         app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
     else:
         logger.error("Не удалось загрузить модели. Сервер не запущен.")

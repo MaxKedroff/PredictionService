@@ -18,9 +18,9 @@ COPY ml_models/ ./ml_models/
 RUN useradd -m -u 1000 mluser && chown -R mluser:mluser /app
 USER mluser
 
-EXPOSE 5001
+EXPOSE 5002
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5001/health || exit 1
+    CMD curl -f http://localhost:5002/health || exit 1
 
 CMD ["python", "-u", "ml_service.py"]
