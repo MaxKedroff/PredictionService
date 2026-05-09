@@ -108,16 +108,3 @@ jobs:
           docker compose up -d
           echo "Rollback completed"
         EOF
-
-  cleanup:
-    runs-on: ubuntu-latest
-    needs: build-and-deploy
-    if: always()
-    steps:
-    - name: Cleanup old Docker images on server
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }} << 'EOF'
-          echo "Cleaning up old Docker images..."
-          docker system prune -af --filter "until=24h"
-          echo "Cleanup completed"
-        EOF
