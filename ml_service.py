@@ -42,7 +42,7 @@ db_config = {
     'max_conn': 10
 }
 
-
+# test
 def load_models():
     """Загрузка всех моделей и препроцессоров"""
     global model, scaler, label_encoders, feature_order, feature_importance, model_config
