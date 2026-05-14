@@ -364,7 +364,7 @@ def preprocess_input(data: Dict[str, Any]) -> pd.DataFrame:
 
     return input_df
 
-@app.route('/health', methods=['GET'])
+@app.route('/ml/health', methods=['GET'])
 def health_check():
     """Проверка статуса сервиса"""
     return jsonify({
@@ -374,7 +374,7 @@ def health_check():
     })
 
 
-@app.route('/predict', methods=['POST'])
+@app.route('/ml/predict', methods=['POST'])
 def predict():
     """Предсказание цены"""
     try:
@@ -434,7 +434,7 @@ def predict():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/predict_batch', methods=['POST'])
+@app.route('/ml/predict_batch', methods=['POST'])
 def predict_batch():
     """Массовое предсказание цен"""
     try:
@@ -482,7 +482,7 @@ def predict_batch():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/feature_importance', methods=['GET'])
+@app.route('/ml/feature_importance', methods=['GET'])
 def get_feature_importance():
     """Получение важности признаков"""
     return jsonify({
@@ -491,7 +491,7 @@ def get_feature_importance():
     })
 
 
-@app.route('/model_info', methods=['GET'])
+@app.route('/ml/model_info', methods=['GET'])
 def get_model_info():
     """Информация о модели"""
     return jsonify({
