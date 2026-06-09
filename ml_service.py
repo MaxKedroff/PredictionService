@@ -408,7 +408,7 @@ def get_analogs():
                 analogs.append({
                     'flat_id': flat.get('flat_id'),
                     'price': flat.get('flat_price'),
-                    'similarity': similarity,
+                    'similarity': float(similarity),
                     'area': flat.get('flat_area'),
                     'rooms': flat.get('flat_rooms'),
                     'floor': flat.get('flat_floor')
